@@ -191,7 +191,7 @@ export async function createStore<
                 } catch (e) {
                   handleError(e);
                 }
-              };
+              }
               return new Proxy(wrappedMutation, {
                 get(target, prop) {
                   if (prop === '$loading') {
