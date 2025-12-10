@@ -161,22 +161,37 @@ export async function createStore<
               const $loading = ref(false)
               const $error = ref<Error | null>(null)
               const $time = ref(0)
-              const wrappedMutation = async (...args: Parameters<TMutation>) => {
-                $loading.value = true
-                const start = performance.now()
+              const wrappedMutation = (...args) => {
+                $loading.value = true;
+                $error.value = null;
+                const start = performance.now();
+
+                const finish = () => {
+                  $loading.value = false;
+                  $time.value = performance.now() - start;
+                };
+              
+                const handleError = (e) => {
+                  finish();
+                  $error.value = e;
+                  throw e;
+                };
+
                 try {
-                  await mutation(...args)
-                  $error.value = null
+                  const result = mutation(...args);
+
+                  if (result instanceof Promise) {
+                    return result
+                      .then((v) => (finish(), v))
+                      .catch(handleError);
+                  } else {
+                    finish();
+                    return result;
+                  }
+                } catch (e) {
+                  handleError(e);
                 }
-                catch (e) {
-                  $error.value = e as Error
-                  throw e
-                }
-                finally {
-                  $loading.value = false
-                  $time.value = performance.now() - start
-                }
-              }
+              };
               return new Proxy(wrappedMutation, {
                 get(target, prop) {
                   if (prop === '$loading') {
